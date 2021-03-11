@@ -1,0 +1,15 @@
+# IDEs and Editors
+.vscode
+.vs
+
+# Binaries, Executables and Object Files
+**/*.o
+**/*.out
+**/*.exe
+main
+bin
+
+# Platform-specific files
+Thumbs.db
+**/._*
+.DS_Store
