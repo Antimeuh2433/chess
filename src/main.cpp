@@ -15,7 +15,7 @@ class Board {
 		std::vector<Coordinates> getAttacks(Coordinates piece);
 		bool attacks(Coordinates piece, Coordinates target);
 		bool isInCheck(bool side);
-		std::vector<Coordinates> getLegalMoves(uint8_t pieceRank, uint8_t pieceFile);
+		std::vector<Coordinates> getLegalMoves(Coordinates piece);
 		bool getSide(Coordinates coords);
 
 		static constexpr bool WHITE = false;
@@ -64,8 +64,8 @@ void Board::setStartingPosition() {
 	this->board[7][7] = BROOK;
 
 	for (int i = 0; i < 8; i++) {
-		this->board[1][i] = WPAWN;
-		this->board[6][i] = BPAWN;
+		this->board[i][1] = WPAWN;
+		this->board[i][6] = BPAWN;
 	}
 }
 
@@ -171,6 +171,13 @@ std::vector<Coordinates> Board::getAttacks(Coordinates piece) {
 			attacking.push_back({piece.file - 1, piece.rank});
 			attacking.push_back({piece.file + 1, piece.rank});
 	}
+	for (int i = 0; i < attacking.size(); i++) {
+		if (attacking[i].file < 0 || attacking[i].file > 7 || attacking[i].rank < 0 || attacking[i].rank > 7) {
+			attacking.erase(attacking.begin() + i);
+			i--;
+		}
+	}
+	return attacking;
 }
 
 bool Board::attacks(Coordinates piece, Coordinates target) {
@@ -184,18 +191,49 @@ bool Board::attacks(Coordinates piece, Coordinates target) {
 }
 
 bool Board::isInCheck(bool side) {
-
+	for (int i = 0; i < 8; i++) {
+		for (int j = 0; j < 8; j++) {
+			if (this->board[i][j] == WKING || this->board[i][j] == BKING) {
+				if (this->getSide({i, j}) == side) {
+					for (int k = 0; k < 8; k++) {
+						for (int l = 0; l < 8; l++) {
+							if (this->board[k][l] != EMPTY && this->getSide({k, l}) != side) {
+								if (this->attacks({k, l}, {i, j})) {
+									return true;
+								}
+							}
+						}
+					}
+					return false;
+				}
+			}
+		}
+	}
+	return false;
 }
 
-std::vector<Coordinates> Board::getLegalMoves(uint8_t pieceRank, uint8_t pieceFile) {
-	std::vector<Coordinates> legalMoves = this->getAttacks({pieceRank, pieceFile});
+std::vector<Coordinates> Board::getLegalMoves(Coordinates piece) {
+	// TODO fix pawn
+	std::vector<Coordinates> legalMoves = this->getAttacks(piece);
+	uint8_t currentStatus = this->board[piece.file][piece.rank], destinationStatus;
+	this->board[piece.file][piece.rank] = EMPTY;
 	for (int i = 0; i < legalMoves.size(); i++) {
-		if (this->getSide(legalMoves[i]) == this->getSide({pieceFile, pieceRank})) {
+		destinationStatus = this->board[legalMoves[i].file][legalMoves[i].rank];
+		if (this->board[legalMoves[i].file][legalMoves[i].rank] != EMPTY && this->getSide(legalMoves[i]) == this->getSide(piece)) {
 			legalMoves.erase(legalMoves.begin() + i);
 			i--;
 			continue;
 		}
+		this->board[legalMoves[i].file][legalMoves[i].rank] = currentStatus;
+		if (this->isInCheck(this->getSide(piece))) {
+			this->board[legalMoves[i].file][legalMoves[i].rank] = destinationStatus;
+			legalMoves.erase(legalMoves.begin() + i);
+			i--;
+			continue;
+		}
+		this->board[legalMoves[i].file][legalMoves[i].rank] = destinationStatus;
 	}
+	return legalMoves;
 }
 
 bool Board::getSide(Coordinates coords) {
@@ -211,6 +249,8 @@ void Board::clearPosition() {
 }
 
 int main() {
-	
+	Board board;
+	board.setStartingPosition();
+	std::cout << board.getLegalMoves({0, 1}).size() << std::endl;
 	return 0;
 }
