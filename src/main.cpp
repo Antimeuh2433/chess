@@ -1,13 +1,22 @@
 #include <iostream>
 #include <vector>
 
+struct Coordinates {
+	int file, rank;
+	bool operator==(Coordinates other) {
+		return (this->file == other.file && this->rank == other.rank);
+	}
+}; // struct Coordinates
+
 class Board {
 	public:
 		Board();
 		void setStartingPosition();
-		bool attacks(uint8_t pieceRank, uint8_t pieceFile, uint8_t targetRank, uint8_t targetFile);
-		std::vector<uint8_t> getLegalMoves(uint8_t pieceRank, uint8_t pieceFile);
-		bool getSide(uint8_t pieceRank, uint8_t pieceFile);
+		std::vector<Coordinates> getAttacks(Coordinates piece);
+		bool attacks(Coordinates piece, Coordinates target);
+		bool isInCheck(bool side);
+		std::vector<Coordinates> getLegalMoves(uint8_t pieceRank, uint8_t pieceFile);
+		bool getSide(Coordinates coords);
 
 		static constexpr bool WHITE = false;
 		static constexpr bool BLACK = true;
@@ -60,49 +69,137 @@ void Board::setStartingPosition() {
 	}
 }
 
-bool Board::attacks(uint8_t pieceRank, uint8_t pieceFile, uint8_t targetRank, uint8_t targetFile) {
-	
-}
-
-std::vector<uint8_t> Board::getLegalMoves(uint8_t pieceRank, uint8_t pieceFile) {
-	std::vector<uint8_t> legalMoves;
-	switch (this->board[pieceRank][pieceFile]) {
+std::vector<Coordinates> Board::getAttacks(Coordinates piece) {
+	std::vector<Coordinates> attacking;
+	switch (this->board[piece.file][piece.rank]) {
 		case EMPTY:
 			break;
 		case WPAWN:
-			legalMoves.push_back((pieceRank + 1) * 8 + pieceFile);
-			if (pieceRank == 1) {
-				legalMoves.push_back((pieceRank + 2) * 8 + pieceFile);
-			}
-			if (this->board[pieceRank + 1][pieceFile - 1] != EMPTY) {
-				legalMoves.push_back((pieceRank + 1) * 8 + pieceFile - 1);
-			}
-			if (this->board[pieceRank + 1][pieceFile + 1] != EMPTY) {
-				legalMoves.push_back((pieceRank + 1) * 8 + pieceFile + 1);
-			}
-			// TODO implement en passant
+			attacking.push_back({piece.file - 1, piece.rank + 1});
+			attacking.push_back({piece.file + 1, piece.rank + 1});
+			break;
 		case BPAWN:
+			attacking.push_back({piece.file - 1, piece.rank - 1});
+			attacking.push_back({piece.file + 1, piece.rank - 1});
 			break;
 		case WKNIGHT:
 		case BKNIGHT:
+			attacking.push_back({piece.file - 1, piece.rank - 2});
+			attacking.push_back({piece.file - 1, piece.rank + 2});
+			attacking.push_back({piece.file + 1, piece.rank - 2});
+			attacking.push_back({piece.file + 1, piece.rank + 2});
+			attacking.push_back({piece.file - 2, piece.rank - 1});
+			attacking.push_back({piece.file - 2, piece.rank + 1});
+			attacking.push_back({piece.file + 2, piece.rank - 1});
+			attacking.push_back({piece.file + 2, piece.rank + 1});
 			break;
 		case WBISHOP:
 		case BBISHOP:
+			{
+				uint8_t i;
+				for (i = 0; this->board[piece.file - i][piece.rank - i] == EMPTY; i++)
+					attacking.push_back({piece.file - i, piece.rank - i});
+				attacking.push_back({piece.file - i, piece.rank - i});
+				for (i = 0; this->board[piece.file - i][piece.rank - i] == EMPTY; i++)
+					attacking.push_back({piece.file - i, piece.rank - i});
+				attacking.push_back({piece.file - i, piece.rank + i});
+				for (i = 0; this->board[piece.file - i][piece.rank - i] == EMPTY; i++)
+					attacking.push_back({piece.file - i, piece.rank - i});
+				attacking.push_back({piece.file + i, piece.rank - i});
+				for (i = 0; this->board[piece.file - i][piece.rank - i] == EMPTY; i++)
+					attacking.push_back({piece.file - i, piece.rank - i});
+				attacking.push_back({piece.file + i, piece.rank + i});
+			}
 			break;
 		case WROOK:
 		case BROOK:
+			{
+				uint8_t i;
+				for (i = 0; this->board[piece.file - i][piece.rank] == EMPTY; i++)
+					attacking.push_back({piece.file - i, piece.rank});
+				attacking.push_back({piece.file - i, piece.rank});
+				for (i = 0; this->board[piece.file + i][piece.rank] == EMPTY; i++)
+					attacking.push_back({piece.file + i, piece.rank});
+				attacking.push_back({piece.file + i, piece.rank});
+				for (i = 0; this->board[piece.file][piece.rank - i] == EMPTY; i++)
+					attacking.push_back({piece.file, piece.rank - i});
+				attacking.push_back({piece.file, piece.rank - i});
+				for (i = 0; this->board[piece.file][piece.rank + i] == EMPTY; i++)
+					attacking.push_back({piece.file, piece.rank + i});
+				attacking.push_back({piece.file, piece.rank + i});
+			}
 			break;
 		case WQUEEN:
 		case BQUEEN:
+			{
+				uint8_t i;
+				for (i = 0; this->board[piece.file - i][piece.rank - i] == EMPTY; i++)
+					attacking.push_back({piece.file - i, piece.rank - i});
+				attacking.push_back({piece.file - i, piece.rank - i});
+				for (i = 0; this->board[piece.file - i][piece.rank - i] == EMPTY; i++)
+					attacking.push_back({piece.file - i, piece.rank - i});
+				attacking.push_back({piece.file - i, piece.rank + i});
+				for (i = 0; this->board[piece.file - i][piece.rank - i] == EMPTY; i++)
+					attacking.push_back({piece.file - i, piece.rank - i});
+				attacking.push_back({piece.file + i, piece.rank - i});
+				for (i = 0; this->board[piece.file - i][piece.rank - i] == EMPTY; i++)
+					attacking.push_back({piece.file - i, piece.rank - i});
+				attacking.push_back({piece.file + i, piece.rank + i});
+
+				for (i = 0; this->board[piece.file - i][piece.rank] == EMPTY; i++)
+					attacking.push_back({piece.file - i, piece.rank});
+				attacking.push_back({piece.file - i, piece.rank});
+				for (i = 0; this->board[piece.file + i][piece.rank] == EMPTY; i++)
+					attacking.push_back({piece.file + i, piece.rank});
+				attacking.push_back({piece.file + i, piece.rank});
+				for (i = 0; this->board[piece.file][piece.rank - i] == EMPTY; i++)
+					attacking.push_back({piece.file, piece.rank - i});
+				attacking.push_back({piece.file, piece.rank - i});
+				for (i = 0; this->board[piece.file][piece.rank + i] == EMPTY; i++)
+					attacking.push_back({piece.file, piece.rank + i});
+				attacking.push_back({piece.file, piece.rank + i});
+			}
 			break;
 		case WKING:
 		case BKING:
-			break;
+			attacking.push_back({piece.file, piece.rank + 1});
+			attacking.push_back({piece.file, piece.rank - 1});
+			attacking.push_back({piece.file - 1, piece.rank + 1});
+			attacking.push_back({piece.file - 1, piece.rank - 1});
+			attacking.push_back({piece.file + 1, piece.rank + 1});
+			attacking.push_back({piece.file + 1, piece.rank - 1});
+			attacking.push_back({piece.file - 1, piece.rank});
+			attacking.push_back({piece.file + 1, piece.rank});
 	}
 }
 
-bool Board::getSide(uint8_t pieceRank, uint8_t pieceFile) {
-	return (this->board[pieceRank][pieceFile] > WKING);
+bool Board::attacks(Coordinates piece, Coordinates target) {
+	std::vector<Coordinates> attacking = this->getAttacks(piece);
+	for (int i = 0; i < attacking.size(); i++) {
+		if (attacking[i] == target) {
+			return true;
+		}
+	}
+	return false;
+}
+
+bool Board::isInCheck(bool side) {
+
+}
+
+std::vector<Coordinates> Board::getLegalMoves(uint8_t pieceRank, uint8_t pieceFile) {
+	std::vector<Coordinates> legalMoves = this->getAttacks({pieceRank, pieceFile});
+	for (int i = 0; i < legalMoves.size(); i++) {
+		if (this->getSide(legalMoves[i]) == this->getSide({pieceFile, pieceRank})) {
+			legalMoves.erase(legalMoves.begin() + i);
+			i--;
+			continue;
+		}
+	}
+}
+
+bool Board::getSide(Coordinates coords) {
+	return (this->board[coords.file][coords.rank] > WKING);
 }
 
 void Board::clearPosition() {
