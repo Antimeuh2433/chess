@@ -18,6 +18,7 @@ class Board {
 		std::vector<Coordinates> getLegalMoves(Coordinates piece);
 		bool getSide(Coordinates coords);
 		void play(Coordinates piece, Coordinates target);
+		void print();
 
 		static constexpr bool WHITE = false;
 		static constexpr bool BLACK = true;
@@ -217,8 +218,9 @@ bool Board::isInCheck(bool side) {
 
 std::vector<Coordinates> Board::getLegalMoves(Coordinates piece) {
 	std::vector<Coordinates> legalMoves = this->getAttacks(piece);
-	uint8_t currentStatus = this->board[piece.file][piece.rank], destinationStatus;
-	uint8_t enPassant = -1;
+	uint8_t currentStatus = this->board[piece.file][piece.rank];
+	uint8_t destinationStatus;
+	int8_t enPassant = -1;
 	if (currentStatus == WPAWN) {
 		for (int i = 0; i < legalMoves.size(); i++) {
 			if (board[legalMoves[i].file][legalMoves[i].rank] == EMPTY) {
@@ -268,18 +270,10 @@ std::vector<Coordinates> Board::getLegalMoves(Coordinates piece) {
 			}
 		}
 	}
-	if (currentStatus == WPAWN || currentStatus == BPAWN) {
-		for (int i = 0; i < legalMoves.size(); i++) {
-			if (this->board[legalMoves[i].file][legalMoves[i].rank] != EMPTY && this->getSide(legalMoves[i]) != this->getSide(piece)) {
-				legalMoves.erase(legalMoves.begin() + i);
-				i--;
-			}
-		}
-	}
 	this->board[piece.file][piece.rank] = EMPTY;
 	for (int i = 0; i < legalMoves.size(); i++) {
 		destinationStatus = this->board[legalMoves[i].file][legalMoves[i].rank];
-		if (this->board[legalMoves[i].file][legalMoves[i].rank] != EMPTY && this->getSide(legalMoves[i]) == this->getSide(piece)) {
+		if (destinationStatus != EMPTY && this->getSide(legalMoves[i]) == this->getSide(piece)) {
 			legalMoves.erase(legalMoves.begin() + i);
 			i--;
 			continue;
@@ -314,6 +308,7 @@ std::vector<Coordinates> Board::getLegalMoves(Coordinates piece) {
 		}
 		this->board[legalMoves[i].file][legalMoves[i].rank] = destinationStatus;
 	}
+	this->board[piece.file][piece.rank] = currentStatus;
 	return legalMoves;
 }
 
@@ -347,9 +342,23 @@ void Board::clearPosition() {
 	}
 }
 
+void Board::print() {
+	char pieces[] = " PNBRQKpnbrqk";
+	for (int i = 0; i < 8; i++) {
+		for (int j = 0; j < 8; j++) {
+			std::cout << pieces[this->board[j][i]] << " ";
+		}
+		std::cout << std::endl;
+	}
+}
+
 int main() {
 	Board board;
 	board.setStartingPosition();
-	std::cout << board.getLegalMoves({0, 1}).size() << std::endl;
+	board.print();
+	board.getLegalMoves({1, 1});
+	std::cout << std::endl;
+	board.play({1, 1}, {1, 3});
+	board.print();
 	return 0;
 }
