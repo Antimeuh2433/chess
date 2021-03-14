@@ -24,7 +24,7 @@ class Board {
 		std::vector<Coordinates> getLegalMoves(Coordinates piece);
 		bool getSide(Coordinates coords);
 		void play(Coordinates piece, Coordinates target);
-		void playRandom(bool side);
+		bool playRandom(bool side);
 		void print();
 		void clearPosition();
 
@@ -110,70 +110,76 @@ std::vector<Coordinates> Board::getAttacks(Coordinates piece) {
 			break;
 		case WBISHOP:
 		case BBISHOP:
-			// TODO rework bishop, rook and queen movement
-			{
-				uint8_t i;
-				for (i = 0; this->board[piece.file - i][piece.rank - i] == EMPTY; i++)
-					attacking.push_back({piece.file - i, piece.rank - i});
+			for (int i = 1; i < std::min(piece.file, piece.rank); i++) {
 				attacking.push_back({piece.file - i, piece.rank - i});
-				for (i = 0; this->board[piece.file - i][piece.rank - i] == EMPTY; i++)
-					attacking.push_back({piece.file - i, piece.rank - i});
-				attacking.push_back({piece.file - i, piece.rank + i});
-				for (i = 0; this->board[piece.file - i][piece.rank - i] == EMPTY; i++)
-					attacking.push_back({piece.file - i, piece.rank - i});
+				if (this->board[piece.file - i][piece.rank - i] != EMPTY) break;
+			}
+			for (int i = 1; i < std::min(uint8_t(7 - piece.file), piece.rank); i++) {
 				attacking.push_back({piece.file + i, piece.rank - i});
-				for (i = 0; this->board[piece.file - i][piece.rank - i] == EMPTY; i++)
-					attacking.push_back({piece.file - i, piece.rank - i});
+				if (this->board[piece.file + i][piece.rank - i] != EMPTY) break;
+			}
+			for (int i = 1; i < std::min(piece.file, uint8_t(7 - piece.rank)); i++) {
+				attacking.push_back({piece.file - i, piece.rank + i});
+				if (this->board[piece.file - i][piece.rank + i] != EMPTY) break;
+			}
+			for (int i = 1; i < std::min(uint8_t(7 - piece.file), uint8_t(7 - piece.rank)); i++) {
 				attacking.push_back({piece.file + i, piece.rank + i});
+				if (this->board[piece.file + i][piece.rank + i] != EMPTY) break;
 			}
 			break;
 		case WROOK:
 		case BROOK:
-			{
-				uint8_t i;
-				for (i = 0; this->board[piece.file - i][piece.rank] == EMPTY; i++)
-					attacking.push_back({piece.file - i, piece.rank});
+			for (int i = 1; i < piece.file; i++) {
 				attacking.push_back({piece.file - i, piece.rank});
-				for (i = 0; this->board[piece.file + i][piece.rank] == EMPTY; i++)
-					attacking.push_back({piece.file + i, piece.rank});
+				if (this->board[piece.file - i][piece.rank] != EMPTY) break;
+			}
+			for (int i = 1; i < 7 - piece.file; i++) {
 				attacking.push_back({piece.file + i, piece.rank});
-				for (i = 0; this->board[piece.file][piece.rank - i] == EMPTY; i++)
-					attacking.push_back({piece.file, piece.rank - i});
+				if (this->board[piece.file + i][piece.rank] != EMPTY) break;
+			}
+			for (int i = 1; i < piece.rank; i++) {
 				attacking.push_back({piece.file, piece.rank - i});
-				for (i = 0; this->board[piece.file][piece.rank + i] == EMPTY; i++)
-					attacking.push_back({piece.file, piece.rank + i});
+				if (this->board[piece.file][piece.rank - i] != EMPTY) break;
+			}
+			for (int i = 1; i < 7 - piece.rank; i++) {
 				attacking.push_back({piece.file, piece.rank + i});
+				if (this->board[piece.file - i][piece.rank + i] != EMPTY) break;
 			}
 			break;
 		case WQUEEN:
 		case BQUEEN:
-			{
-				uint8_t i;
-				for (i = 0; this->board[piece.file - i][piece.rank - i] == EMPTY; i++)
-					attacking.push_back({piece.file - i, piece.rank - i});
+			for (int i = 1; i < std::min(piece.file, piece.rank); i++) {
 				attacking.push_back({piece.file - i, piece.rank - i});
-				for (i = 0; this->board[piece.file - i][piece.rank - i] == EMPTY; i++)
-					attacking.push_back({piece.file - i, piece.rank - i});
-				attacking.push_back({piece.file - i, piece.rank + i});
-				for (i = 0; this->board[piece.file - i][piece.rank - i] == EMPTY; i++)
-					attacking.push_back({piece.file - i, piece.rank - i});
+				if (this->board[piece.file - i][piece.rank - i] != EMPTY) break;
+			}
+			for (int i = 1; i < std::min(uint8_t(7 - piece.file), piece.rank); i++) {
 				attacking.push_back({piece.file + i, piece.rank - i});
-				for (i = 0; this->board[piece.file - i][piece.rank - i] == EMPTY; i++)
-					attacking.push_back({piece.file - i, piece.rank - i});
+				if (this->board[piece.file + i][piece.rank - i] != EMPTY) break;
+			}
+			for (int i = 1; i < std::min(piece.file, uint8_t(7 - piece.rank)); i++) {
+				attacking.push_back({piece.file - i, piece.rank + i});
+				if (this->board[piece.file - i][piece.rank + i] != EMPTY) break;
+			}
+			for (int i = 1; i < std::min(uint8_t(7 - piece.file), uint8_t(7 - piece.rank)); i++) {
 				attacking.push_back({piece.file + i, piece.rank + i});
+				if (this->board[piece.file + i][piece.rank + i] != EMPTY) break;
+			}
 
-				for (i = 0; this->board[piece.file - i][piece.rank] == EMPTY; i++)
-					attacking.push_back({piece.file - i, piece.rank});
+			for (int i = 1; i < piece.file; i++) {
 				attacking.push_back({piece.file - i, piece.rank});
-				for (i = 0; this->board[piece.file + i][piece.rank] == EMPTY; i++)
-					attacking.push_back({piece.file + i, piece.rank});
+				if (this->board[piece.file - i][piece.rank] != EMPTY) break;
+			}
+			for (int i = 1; i < 7 - piece.file; i++) {
 				attacking.push_back({piece.file + i, piece.rank});
-				for (i = 0; this->board[piece.file][piece.rank - i] == EMPTY; i++)
-					attacking.push_back({piece.file, piece.rank - i});
+				if (this->board[piece.file + i][piece.rank] != EMPTY) break;
+			}
+			for (int i = 1; i < piece.rank; i++) {
 				attacking.push_back({piece.file, piece.rank - i});
-				for (i = 0; this->board[piece.file][piece.rank + i] == EMPTY; i++)
-					attacking.push_back({piece.file, piece.rank + i});
+				if (this->board[piece.file][piece.rank - i] != EMPTY) break;
+			}
+			for (int i = 1; i < 7 - piece.rank; i++) {
 				attacking.push_back({piece.file, piece.rank + i});
+				if (this->board[piece.file - i][piece.rank + i] != EMPTY) break;
 			}
 			break;
 		case WKING:
@@ -255,6 +261,11 @@ std::vector<Coordinates> Board::getLegalMoves(Coordinates piece) {
 				}
 			}
 		}
+		for (int i = 0; i < legalMoves.size(); i++) {
+			if (legalMoves[i].rank == 7) {
+				// set promote flag or something
+			}
+		}
 	} else if (currentStatus == BPAWN) {
 		for (int i = 0; i < legalMoves.size(); i++) {
 			if (this->board[legalMoves[i].file][legalMoves[i].rank] == EMPTY) {
@@ -277,6 +288,11 @@ std::vector<Coordinates> Board::getLegalMoves(Coordinates piece) {
 				if (this->board[piece.file][piece.rank - 2] == EMPTY) {
 					legalMoves.push_back({piece.file, piece.rank - 2});
 				}
+			}
+		}
+		for (int i = 0; i < legalMoves.size(); i++) {
+			if (legalMoves[i].rank == 0) {
+				// set promote flag or something
 			}
 		}
 	}
@@ -343,9 +359,9 @@ bool Board::getSide(Coordinates coords) {
 void Board::play(Coordinates piece, Coordinates target) {
 	if (target.file == enPassantFlag) {
 		if (this->getSide(piece) == WHITE && target.rank == 5) {
-			this->board[target.file][target.rank - 1] == EMPTY;
+			this->board[target.file][target.rank - 1] = EMPTY;
 		} else if (this->getSide(piece) == BLACK && target.rank == 2) {
-			this->board[target.file][target.rank + 1] == EMPTY;
+			this->board[target.file][target.rank + 1] = EMPTY;
 		}
 	}
 	this->board[target.file][target.rank] = this->board[piece.file][piece.rank];
@@ -358,7 +374,7 @@ void Board::play(Coordinates piece, Coordinates target) {
 	}
 }
 
-void Board::playRandom(bool side) {
+bool Board::playRandom(bool side) {
 	std::vector<std::pair<Coordinates, Coordinates>> allMoves;
 	for (int i = 0; i < 8; i++) {
 		for (int j = 0; j < 8; j++) {
@@ -370,8 +386,18 @@ void Board::playRandom(bool side) {
 			}
 		}
 	}
+	if (allMoves.size() == 0) {
+		if (this->isInCheck(side)) {
+			std::cout << "Checkmate. " << (side == WHITE ? "White " : "Black ") << "wins." << std::endl;
+			return false;
+		} else {
+			std::cout << "Stalemate. Draw." << std::endl;
+			return false;
+		}
+	}
 	int move = rand() % allMoves.size();
 	this->play(allMoves[move].first, allMoves[move].second);
+	return true;
 }
 
 void Board::clearPosition() {
@@ -397,14 +423,14 @@ int main() {
 	Board board;
 	board.setStartingPosition();
 	for (int i = 0; i < 20; i++) {
-		board.playRandom(Board::WHITE);
+		if (!board.playRandom(Board::WHITE)) break;
 		board.print();
 		std::cout << std::endl << std::endl << std::endl << std::endl << std::endl << std::endl << std::endl << std::endl;
-		std::this_thread::sleep_for(std::chrono::milliseconds(3500));
-		board.playRandom(Board::BLACK);
+		//std::this_thread::sleep_for(std::chrono::milliseconds(10000));
+		if (!board.playRandom(Board::BLACK)) break;
 		board.print();
 		std::cout << std::endl << std::endl << std::endl << std::endl << std::endl << std::endl << std::endl << std::endl;
-		std::this_thread::sleep_for(std::chrono::milliseconds(3500));
+		//std::this_thread::sleep_for(std::chrono::milliseconds(10000));
 	}
 	return 0;
 }
