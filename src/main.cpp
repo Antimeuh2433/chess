@@ -42,8 +42,6 @@ class Board {
 	private:
 		Coordinates whiteKingPosition;
 		Coordinates blackKingPosition;
-		std::vector<Coordinates> blackPieces;
-		std::vector<Coordinates> whitePieces;
 		uint8_t board[8][8];
 		int8_t enPassantFlag;
 }; // class Board
@@ -78,10 +76,6 @@ void Board::setStartingPosition() {
 	for (int i = 0; i < 8; i++) {
 		this->board[i][1] = WPAWN;
 		this->board[i][6] = BPAWN;
-		this->whitePieces.push_back({i, 0});
-		this->whitePieces.push_back({i, 1});
-		this->blackPieces.push_back({i, 7});
-		this->blackPieces.push_back({i, 6});
 	}
 }
 
@@ -208,16 +202,18 @@ bool Board::attacks(Coordinates piece, Coordinates target) {
 }
 
 bool Board::isInCheck(bool side) {
-	if (side == WHITE) {
-		for (int i = 0; i < this->blackPieces.size(); i++) {
-			if (this->attacks(this->blackPieces[i], this->whiteKingPosition)) {
-				return true;
-			}
-		}
-	} else {
-		for (int i = 0; i < this->whitePieces.size(); i++) {
-			if (this->attacks(this->whitePieces[i], this->blackKingPosition)) {
-				return true;
+	for (int i = 0; i < 8; i++) {
+		for (int j = 0; j < 8; j++) {
+			if (this->board[i][j] != EMPTY && this->getSide({i, j}) != side) {
+				if (side == WHITE) {
+					if (this->attacks({i, j}, this->whiteKingPosition)) {
+						return true;
+					}
+				} else {
+					if (this->attacks({i, j}, this->blackKingPosition)) {
+						return true;
+					}
+				}
 			}
 		}
 	}
@@ -279,53 +275,13 @@ std::vector<Coordinates> Board::getLegalMoves(Coordinates piece) {
 		}
 	}
 	this->board[piece.file][piece.rank] = EMPTY;
-	// FIX code is generally really bad pretty much everywhere
-	// FIX if piece is king, update this->*KingPosition
-	if (this->getSide(piece) == WHITE) {
-		for (int i = 0; i < this->whitePieces.size(); i++) {
-			if (this->whitePieces[i] == piece) {
-				this->whitePieces.erase(this->whitePieces.begin() + i);
-				break;
-			}
-		}
-		if (currentStatus == WKING) {
-			this->whiteKingPosition = piece;
-		}
-	} else {
-		for (int i = 0; i < this->blackPieces.size(); i++) {
-			if (this->blackPieces[i] == piece) {
-				this->blackPieces.erase(this->blackPieces.begin() + i);
-				break;
-			}
-		}
-		if (currentStatus == BKING) {
-			this->blackKingPosition = piece;
-		}
-	}
+	// FIX update this->*KingPosition
 	for (int i = 0; i < legalMoves.size(); i++) {
-		// FIX if destinationStatus is king, what happens
 		destinationStatus = this->board[legalMoves[i].file][legalMoves[i].rank];
 		if (destinationStatus != EMPTY && this->getSide(legalMoves[i]) == this->getSide(piece)) {
 			legalMoves.erase(legalMoves.begin() + i);
 			i--;
 			continue;
-		}
-		if (this->board[legalMoves[i].file][legalMoves[i].rank] != EMPTY) {
-			if (this->getSide(piece) == WHITE) {
-				for (int i = 0; i < this->blackPieces.size(); i++) {
-					if (this->blackPieces[i] == legalMoves[i]) {
-						this->blackPieces.erase(this->blackPieces.begin() + i);
-						break;
-					}
-				}
-			} else {
-				for (int i = 0; i < this->whitePieces.size(); i++) {
-					if (this->whitePieces[i] == legalMoves[i]) {
-						this->whitePieces.erase(this->whitePieces.begin() + i);
-						break;
-					}
-				}
-			}
 		}
 		this->board[legalMoves[i].file][legalMoves[i].rank] = currentStatus;
 		if (i == enPassant) {
@@ -335,7 +291,11 @@ std::vector<Coordinates> Board::getLegalMoves(Coordinates piece) {
 				this->board[legalMoves[i].file][legalMoves[i].rank + 1] = EMPTY;
 			}
 		}
-		// FIX update this->*Pieces and this->*KingPosition before this->isInCheck call
+		if (currentStatus == WKING) {
+			this->whiteKingPosition = legalMoves[i];
+		} else if (currentStatus == BKING) {
+			this->blackKingPosition = legalMoves[i];
+		}
 		if (this->isInCheck(this->getSide(piece))) {
 			if (enPassant != -1) {
 				if (this->getSide(piece) == WHITE) {
@@ -359,6 +319,11 @@ std::vector<Coordinates> Board::getLegalMoves(Coordinates piece) {
 		this->board[legalMoves[i].file][legalMoves[i].rank] = destinationStatus;
 	}
 	this->board[piece.file][piece.rank] = currentStatus;
+	if (currentStatus = WKING) {
+		this->whiteKingPosition = piece;
+	} else if (currentStatus = BKING) {
+		this->blackKingPosition = piece;
+	}
 	return legalMoves;
 }
 
@@ -386,42 +351,6 @@ void Board::play(Coordinates piece, Coordinates target) {
 
 void Board::playRandom(bool side) {
 
-}
-
-bool Board::capture(Coordinates pieceCapturing, Coordinates pieceCaptured, bool sideCapturing, bool enPassant) {
-	this->board[pieceCaptured.file][pieceCaptured.rank] = this->board[pieceCapturing.file][pieceCapturing.rank];
-	this->board[pieceCapturing.file][pieceCapturing.rank] = EMPTY;
-	if (sideCapturing == WHITE) {
-		for (int i = 0; i < this->whitePieces.size(); i++) {
-			if (this->whitePieces[i] == pieceCapturing) {
-				this->whitePieces[i] = pieceCaptured;
-				break;
-			}
-		}
-		if (enPassant) pieceCaptured.rank--;
-		for (int i = 0; i < this->blackPieces.size(); i++) {
-			if (this->blackPieces[i] == pieceCaptured) {
-				this->blackPieces.erase(this->blackPieces.begin() + i);
-				break;
-			}
-		}
-		this->board[pieceCaptured.file][pieceCaptured.rank] = EMPTY;
-	} else {
-		for (int i = 0; i < this->blackPieces.size(); i++) {
-			if (this->blackPieces[i] == pieceCapturing) {
-				this->blackPieces[i] = pieceCaptured;
-				break;
-			}
-		}
-		if (enPassant) pieceCaptured.rank++;
-		for (int i = 0; i < this->whitePieces.size(); i++) {
-			if (this->whitePieces[i] == pieceCaptured) {
-				this->whitePieces.erase(this->whitePieces.begin() + i);
-				break;
-			}
-		}
-		this->board[pieceCaptured.file][pieceCaptured.rank] = EMPTY;
-	}
 }
 
 void Board::clearPosition() {
