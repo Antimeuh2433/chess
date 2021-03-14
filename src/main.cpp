@@ -143,7 +143,7 @@ std::vector<Coordinates> Board::getAttacks(Coordinates piece) {
 			}
 			for (int i = 1; i < 7 - piece.rank; i++) {
 				attacking.push_back({piece.file, piece.rank + i});
-				if (this->board[piece.file - i][piece.rank + i] != EMPTY) break;
+				if (this->board[piece.file][piece.rank + i] != EMPTY) break;
 			}
 			break;
 		case WQUEEN:
@@ -179,7 +179,7 @@ std::vector<Coordinates> Board::getAttacks(Coordinates piece) {
 			}
 			for (int i = 1; i < 7 - piece.rank; i++) {
 				attacking.push_back({piece.file, piece.rank + i});
-				if (this->board[piece.file - i][piece.rank + i] != EMPTY) break;
+				if (this->board[piece.file][piece.rank + i] != EMPTY) break;
 			}
 			break;
 		case WKING:
@@ -300,10 +300,6 @@ std::vector<Coordinates> Board::getLegalMoves(Coordinates piece) {
 	for (int i = 0; i < legalMoves.size(); i++) {
 		destinationStatus = this->board[legalMoves[i].file][legalMoves[i].rank];
 		if (destinationStatus != EMPTY && this->getSide(legalMoves[i]) == side) {
-			legalMoves.erase(legalMoves.begin() + i);
-			i--;
-			continue;
-		} else if (legalMoves[i] == piece) {
 			legalMoves.erase(legalMoves.begin() + i);
 			i--;
 			continue;
