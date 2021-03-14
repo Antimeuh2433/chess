@@ -5,9 +5,11 @@
 
 struct Coordinates {
 	uint8_t file, rank;
-	Coordinates(uint8_t nFile = 0, uint8_t nRank = 0) {
+	uint8_t promotion = 0;
+	Coordinates(uint8_t nFile = 0, uint8_t nRank = 0, uint8_t nPromotion = 0) {
 		this->file = nFile;
 		this->rank = nRank;
+		this->promotion = nPromotion;
 	}
 	bool operator==(Coordinates other) {
 		return (this->file == other.file && this->rank == other.rank);
@@ -262,8 +264,13 @@ std::vector<Coordinates> Board::getLegalMoves(Coordinates piece) {
 			}
 		}
 		for (int i = 0; i < legalMoves.size(); i++) {
-			if (legalMoves[i].rank == 7) {
-				// set promote flag or something
+			if (legalMoves[i].rank == 7 && legalMoves[i].promotion == 0) {
+				legalMoves.push_back({legalMoves[i].file, legalMoves[i].rank, WKNIGHT});
+				legalMoves.push_back({legalMoves[i].file, legalMoves[i].rank, WBISHOP});
+				legalMoves.push_back({legalMoves[i].file, legalMoves[i].rank, WROOK});
+				legalMoves.push_back({legalMoves[i].file, legalMoves[i].rank, WQUEEN});
+				legalMoves.erase(legalMoves.begin() + i);
+				i--;
 			}
 		}
 	} else if (currentStatus == BPAWN) {
@@ -291,8 +298,13 @@ std::vector<Coordinates> Board::getLegalMoves(Coordinates piece) {
 			}
 		}
 		for (int i = 0; i < legalMoves.size(); i++) {
-			if (legalMoves[i].rank == 0) {
-				// set promote flag or something
+			if (legalMoves[i].rank == 0 && legalMoves[i].promotion == 0) {
+				legalMoves.push_back({legalMoves[i].file, legalMoves[i].rank, BKNIGHT});
+				legalMoves.push_back({legalMoves[i].file, legalMoves[i].rank, BBISHOP});
+				legalMoves.push_back({legalMoves[i].file, legalMoves[i].rank, BROOK});
+				legalMoves.push_back({legalMoves[i].file, legalMoves[i].rank, BQUEEN});
+				legalMoves.erase(legalMoves.begin() + i);
+				i--;
 			}
 		}
 	}
@@ -305,6 +317,9 @@ std::vector<Coordinates> Board::getLegalMoves(Coordinates piece) {
 			continue;
 		}
 		this->board[legalMoves[i].file][legalMoves[i].rank] = currentStatus;
+		if (legalMoves[i].promotion != 0) {
+			this->board[legalMoves[i].file][legalMoves[i].rank] = legalMoves[i].promotion;
+		}
 		if (i == enPassant) {
 			if (side == WHITE) {
 				this->board[legalMoves[i].file][legalMoves[i].rank - 1] = EMPTY;
@@ -360,7 +375,15 @@ void Board::play(Coordinates piece, Coordinates target) {
 			this->board[target.file][target.rank + 1] = EMPTY;
 		}
 	}
+	if (this->board[piece.file][piece.rank] == WKING) {
+		this->whiteKingPosition = target;
+	} else if (this->board[piece.file][piece.rank] == BKING) {
+		this->blackKingPosition = target;
+	}
 	this->board[target.file][target.rank] = this->board[piece.file][piece.rank];
+	if (target.promotion != 0) {
+		this->board[target.file][target.rank] = target.promotion;
+	}
 	this->board[piece.file][piece.rank] = EMPTY;
 	this->enPassantFlag = -1;
 	if (this->board[target.file][target.rank] == WPAWN || this->board[target.file][target.rank] == BPAWN) {
@@ -418,15 +441,15 @@ int main() {
 	srand(time(NULL));
 	Board board;
 	board.setStartingPosition();
-	for (int i = 0; i < 20; i++) {
+	for (int i = 0; i < 100; i++) {
 		if (!board.playRandom(Board::WHITE)) break;
 		board.print();
 		std::cout << std::endl << std::endl << std::endl << std::endl << std::endl << std::endl << std::endl << std::endl;
-		//std::this_thread::sleep_for(std::chrono::milliseconds(10000));
+		std::this_thread::sleep_for(std::chrono::milliseconds(10000));
 		if (!board.playRandom(Board::BLACK)) break;
 		board.print();
 		std::cout << std::endl << std::endl << std::endl << std::endl << std::endl << std::endl << std::endl << std::endl;
-		//std::this_thread::sleep_for(std::chrono::milliseconds(10000));
+		std::this_thread::sleep_for(std::chrono::milliseconds(10000));
 	}
 	return 0;
 }
