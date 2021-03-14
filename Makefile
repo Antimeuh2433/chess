@@ -22,4 +22,8 @@ $(EXE): $(BINDIR) $(OBJFILES)
 $(BINDIR)/%.o: $(SRCDIR)/%.cpp
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
 
+clean:
+	del /Q bin/*.o
+	del /Q bin/chess.exe
+
 .PHONY: all debug release

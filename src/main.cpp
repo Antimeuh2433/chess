@@ -1,8 +1,14 @@
 #include <iostream>
 #include <vector>
+#include <thread>
+#include <chrono>
 
 struct Coordinates {
-	int file, rank;
+	uint8_t file, rank;
+	Coordinates(uint8_t nFile = 0, uint8_t nRank = 0) {
+		this->file = nFile;
+		this->rank = nRank;
+	}
 	bool operator==(Coordinates other) {
 		return (this->file == other.file && this->rank == other.rank);
 	}
@@ -19,7 +25,6 @@ class Board {
 		bool getSide(Coordinates coords);
 		void play(Coordinates piece, Coordinates target);
 		void playRandom(bool side);
-		bool capture(Coordinates pieceCapturing, Coordinates pieceCaptured, bool side, bool enPassant = false);
 		void print();
 		void clearPosition();
 
@@ -275,10 +280,13 @@ std::vector<Coordinates> Board::getLegalMoves(Coordinates piece) {
 		}
 	}
 	this->board[piece.file][piece.rank] = EMPTY;
-	// FIX update this->*KingPosition
 	for (int i = 0; i < legalMoves.size(); i++) {
 		destinationStatus = this->board[legalMoves[i].file][legalMoves[i].rank];
 		if (destinationStatus != EMPTY && this->getSide(legalMoves[i]) == this->getSide(piece)) {
+			legalMoves.erase(legalMoves.begin() + i);
+			i--;
+			continue;
+		} else if (legalMoves[i] == piece) {
 			legalMoves.erase(legalMoves.begin() + i);
 			i--;
 			continue;
@@ -350,7 +358,19 @@ void Board::play(Coordinates piece, Coordinates target) {
 }
 
 void Board::playRandom(bool side) {
-
+	std::vector<std::pair<Coordinates, Coordinates>> allMoves;
+	for (int i = 0; i < 8; i++) {
+		for (int j = 0; j < 8; j++) {
+			if (this->board[i][j] != EMPTY && this->getSide({i, j}) == side) {
+				std::vector<Coordinates> legalMoves = this->getLegalMoves({i, j});
+				for (int k = 0; k < legalMoves.size(); k++) {
+					allMoves.push_back(std::make_pair(Coordinates(i, j), legalMoves[k]));
+				}
+			}
+		}
+	}
+	int move = rand() % allMoves.size();
+	this->play(allMoves[move].first, allMoves[move].second);
 }
 
 void Board::clearPosition() {
@@ -363,7 +383,7 @@ void Board::clearPosition() {
 
 void Board::print() {
 	char pieces[] = " PNBRQKpnbrqk";
-	for (int i = 0; i < 8; i++) {
+	for (int i = 7; i >= 0; i--) {
 		for (int j = 0; j < 8; j++) {
 			std::cout << pieces[this->board[j][i]] << " ";
 		}
@@ -372,12 +392,18 @@ void Board::print() {
 }
 
 int main() {
+	srand(time(NULL));
 	Board board;
 	board.setStartingPosition();
-	board.print();
-	board.getLegalMoves({1, 1});
-	std::cout << std::endl;
-	board.play({1, 1}, {1, 3});
-	board.print();
+	for (int i = 0; i < 20; i++) {
+		board.playRandom(Board::WHITE);
+		board.print();
+		std::cout << std::endl << std::endl << std::endl << std::endl << std::endl << std::endl << std::endl << std::endl;
+		std::this_thread::sleep_for(std::chrono::milliseconds(3500));
+		board.playRandom(Board::BLACK);
+		board.print();
+		std::cout << std::endl << std::endl << std::endl << std::endl << std::endl << std::endl << std::endl << std::endl;
+		std::this_thread::sleep_for(std::chrono::milliseconds(3500));
+	}
 	return 0;
 }
