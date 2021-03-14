@@ -23,7 +23,7 @@ $(BINDIR)/%.o: $(SRCDIR)/%.cpp
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
 
 clean:
-	del /Q bin/*.o
-	del /Q bin/chess.exe
+	del /Q $(BINDIR)\*.o
+	del /Q $(BINDIR)\chess.exe
 
 .PHONY: all debug release
