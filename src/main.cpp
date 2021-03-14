@@ -18,7 +18,10 @@ class Board {
 		std::vector<Coordinates> getLegalMoves(Coordinates piece);
 		bool getSide(Coordinates coords);
 		void play(Coordinates piece, Coordinates target);
+		void playRandom(bool side);
+		bool capture(Coordinates pieceCapturing, Coordinates pieceCaptured, bool side, bool enPassant = false);
 		void print();
+		void clearPosition();
 
 		static constexpr bool WHITE = false;
 		static constexpr bool BLACK = true;
@@ -37,9 +40,12 @@ class Board {
 		static constexpr uint8_t BQUEEN = 11;
 		static constexpr uint8_t BKING = 12;
 	private:
-		void clearPosition();
+		Coordinates whiteKingPosition;
+		Coordinates blackKingPosition;
+		std::vector<Coordinates> blackPieces;
+		std::vector<Coordinates> whitePieces;
 		uint8_t board[8][8];
-		uint8_t enPassantFlag;
+		int8_t enPassantFlag;
 }; // class Board
 
 Board::Board() {
@@ -57,6 +63,7 @@ void Board::setStartingPosition() {
 	this->board[5][0] = WBISHOP;
 	this->board[6][0] = WKNIGHT;
 	this->board[7][0] = WROOK;
+	this->whiteKingPosition = {4, 0};
 
 	this->board[0][7] = BROOK;
 	this->board[1][7] = BKNIGHT;
@@ -66,10 +73,15 @@ void Board::setStartingPosition() {
 	this->board[5][7] = BBISHOP;
 	this->board[6][7] = BKNIGHT;
 	this->board[7][7] = BROOK;
+	this->blackKingPosition = {4, 7};
 
 	for (int i = 0; i < 8; i++) {
 		this->board[i][1] = WPAWN;
 		this->board[i][6] = BPAWN;
+		this->whitePieces.push_back({i, 0});
+		this->whitePieces.push_back({i, 1});
+		this->blackPieces.push_back({i, 7});
+		this->blackPieces.push_back({i, 6});
 	}
 }
 
@@ -99,6 +111,7 @@ std::vector<Coordinates> Board::getAttacks(Coordinates piece) {
 			break;
 		case WBISHOP:
 		case BBISHOP:
+			// TODO rework bishop, rook and queen movement
 			{
 				uint8_t i;
 				for (i = 0; this->board[piece.file - i][piece.rank - i] == EMPTY; i++)
@@ -195,21 +208,16 @@ bool Board::attacks(Coordinates piece, Coordinates target) {
 }
 
 bool Board::isInCheck(bool side) {
-	for (int i = 0; i < 8; i++) {
-		for (int j = 0; j < 8; j++) {
-			if (this->board[i][j] == WKING || this->board[i][j] == BKING) {
-				if (this->getSide({i, j}) == side) {
-					for (int k = 0; k < 8; k++) {
-						for (int l = 0; l < 8; l++) {
-							if (this->board[k][l] != EMPTY && this->getSide({k, l}) != side) {
-								if (this->attacks({k, l}, {i, j})) {
-									return true;
-								}
-							}
-						}
-					}
-					return false;
-				}
+	if (side == WHITE) {
+		for (int i = 0; i < this->blackPieces.size(); i++) {
+			if (this->attacks(this->blackPieces[i], this->whiteKingPosition)) {
+				return true;
+			}
+		}
+	} else {
+		for (int i = 0; i < this->whitePieces.size(); i++) {
+			if (this->attacks(this->whitePieces[i], this->blackKingPosition)) {
+				return true;
 			}
 		}
 	}
@@ -223,7 +231,7 @@ std::vector<Coordinates> Board::getLegalMoves(Coordinates piece) {
 	int8_t enPassant = -1;
 	if (currentStatus == WPAWN) {
 		for (int i = 0; i < legalMoves.size(); i++) {
-			if (board[legalMoves[i].file][legalMoves[i].rank] == EMPTY) {
+			if (this->board[legalMoves[i].file][legalMoves[i].rank] == EMPTY) {
 				if (legalMoves[i].file != this->enPassantFlag || legalMoves[i].rank != 5) {
 					legalMoves.erase(legalMoves.begin() + i);
 					i--;
@@ -247,7 +255,7 @@ std::vector<Coordinates> Board::getLegalMoves(Coordinates piece) {
 		}
 	} else if (currentStatus == BPAWN) {
 		for (int i = 0; i < legalMoves.size(); i++) {
-			if (board[legalMoves[i].file][legalMoves[i].rank] == EMPTY) {
+			if (this->board[legalMoves[i].file][legalMoves[i].rank] == EMPTY) {
 				if (legalMoves[i].file != this->enPassantFlag || legalMoves[i].rank != 2) {
 					legalMoves.erase(legalMoves.begin() + i);
 					i--;
@@ -271,12 +279,53 @@ std::vector<Coordinates> Board::getLegalMoves(Coordinates piece) {
 		}
 	}
 	this->board[piece.file][piece.rank] = EMPTY;
+	// FIX code is generally really bad pretty much everywhere
+	// FIX if piece is king, update this->*KingPosition
+	if (this->getSide(piece) == WHITE) {
+		for (int i = 0; i < this->whitePieces.size(); i++) {
+			if (this->whitePieces[i] == piece) {
+				this->whitePieces.erase(this->whitePieces.begin() + i);
+				break;
+			}
+		}
+		if (currentStatus == WKING) {
+			this->whiteKingPosition = piece;
+		}
+	} else {
+		for (int i = 0; i < this->blackPieces.size(); i++) {
+			if (this->blackPieces[i] == piece) {
+				this->blackPieces.erase(this->blackPieces.begin() + i);
+				break;
+			}
+		}
+		if (currentStatus == BKING) {
+			this->blackKingPosition = piece;
+		}
+	}
 	for (int i = 0; i < legalMoves.size(); i++) {
+		// FIX if destinationStatus is king, what happens
 		destinationStatus = this->board[legalMoves[i].file][legalMoves[i].rank];
 		if (destinationStatus != EMPTY && this->getSide(legalMoves[i]) == this->getSide(piece)) {
 			legalMoves.erase(legalMoves.begin() + i);
 			i--;
 			continue;
+		}
+		if (this->board[legalMoves[i].file][legalMoves[i].rank] != EMPTY) {
+			if (this->getSide(piece) == WHITE) {
+				for (int i = 0; i < this->blackPieces.size(); i++) {
+					if (this->blackPieces[i] == legalMoves[i]) {
+						this->blackPieces.erase(this->blackPieces.begin() + i);
+						break;
+					}
+				}
+			} else {
+				for (int i = 0; i < this->whitePieces.size(); i++) {
+					if (this->whitePieces[i] == legalMoves[i]) {
+						this->whitePieces.erase(this->whitePieces.begin() + i);
+						break;
+					}
+				}
+			}
 		}
 		this->board[legalMoves[i].file][legalMoves[i].rank] = currentStatus;
 		if (i == enPassant) {
@@ -286,6 +335,7 @@ std::vector<Coordinates> Board::getLegalMoves(Coordinates piece) {
 				this->board[legalMoves[i].file][legalMoves[i].rank + 1] = EMPTY;
 			}
 		}
+		// FIX update this->*Pieces and this->*KingPosition before this->isInCheck call
 		if (this->isInCheck(this->getSide(piece))) {
 			if (enPassant != -1) {
 				if (this->getSide(piece) == WHITE) {
@@ -331,6 +381,46 @@ void Board::play(Coordinates piece, Coordinates target) {
 		if (abs(target.rank - piece.rank) == 2) {
 			this->enPassantFlag = target.file;
 		}
+	}
+}
+
+void Board::playRandom(bool side) {
+
+}
+
+bool Board::capture(Coordinates pieceCapturing, Coordinates pieceCaptured, bool sideCapturing, bool enPassant) {
+	this->board[pieceCaptured.file][pieceCaptured.rank] = this->board[pieceCapturing.file][pieceCapturing.rank];
+	this->board[pieceCapturing.file][pieceCapturing.rank] = EMPTY;
+	if (sideCapturing == WHITE) {
+		for (int i = 0; i < this->whitePieces.size(); i++) {
+			if (this->whitePieces[i] == pieceCapturing) {
+				this->whitePieces[i] = pieceCaptured;
+				break;
+			}
+		}
+		if (enPassant) pieceCaptured.rank--;
+		for (int i = 0; i < this->blackPieces.size(); i++) {
+			if (this->blackPieces[i] == pieceCaptured) {
+				this->blackPieces.erase(this->blackPieces.begin() + i);
+				break;
+			}
+		}
+		this->board[pieceCaptured.file][pieceCaptured.rank] = EMPTY;
+	} else {
+		for (int i = 0; i < this->blackPieces.size(); i++) {
+			if (this->blackPieces[i] == pieceCapturing) {
+				this->blackPieces[i] = pieceCaptured;
+				break;
+			}
+		}
+		if (enPassant) pieceCaptured.rank++;
+		for (int i = 0; i < this->whitePieces.size(); i++) {
+			if (this->whitePieces[i] == pieceCaptured) {
+				this->whitePieces.erase(this->whitePieces.begin() + i);
+				break;
+			}
+		}
+		this->board[pieceCaptured.file][pieceCaptured.rank] = EMPTY;
 	}
 }
 
