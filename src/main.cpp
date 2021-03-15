@@ -2,6 +2,9 @@
 #include <vector>
 #include <thread>
 #include <chrono>
+#include <string>
+#include <sstream>
+#include <iterator>
 
 struct Coordinates {
 	uint8_t file, rank;
@@ -30,6 +33,7 @@ class Board {
 		void print();
 		void clearPosition();
 		void setPiece(Coordinates coords, uint8_t piece);
+		bool loadFromFEN(std::string fen);
 
 		static constexpr bool WHITE = false;
 		static constexpr bool BLACK = true;
@@ -57,6 +61,7 @@ class Board {
 		bool whiteKingSideCastle, whiteQueenSideCastle, blackKingSideCastle, blackQueenSideCastle;
 		int moveCount;
 		uint8_t pliesForDraw;
+		bool toPlay;
 }; // class Board
 
 Board::Board() {
@@ -66,6 +71,9 @@ Board::Board() {
 	this->whiteQueenSideCastle = true;
 	this->blackKingSideCastle = true;
 	this->blackQueenSideCastle = true;
+	this->moveCount = 0;
+	this->pliesForDraw = 0;
+	this->toPlay = WHITE;
 }
 
 void Board::setStartingPosition() {
@@ -509,19 +517,117 @@ void Board::setPiece(Coordinates coords, uint8_t piece) {
 	this->board[coords.file][coords.rank] = piece;
 }
 
+bool Board::loadFromFEN(std::string fen) {
+	std::istringstream iss(fen);
+	std::vector<std::string> results((std::istream_iterator<std::string>(iss)), std::istream_iterator<std::string>());
+	if (results.size() != 6) return false;
+	uint8_t rank = 7;
+	uint8_t file = 0;
+	for (int i = 0; i < results[0].size(); i++) {
+		switch (results[0][i]) {
+			case 'P':
+				this->board[file][rank] = WPAWN;
+				file++;
+				break;
+			case 'N':
+				this->board[file][rank] = WKNIGHT;
+				file++;
+				break;
+			case 'B':
+				this->board[file][rank] = WBISHOP;
+				file++;
+				break;
+			case 'R':
+				this->board[file][rank] = WROOK;
+				file++;
+				break;
+			case 'Q':
+				this->board[file][rank] = WQUEEN;
+				file++;
+				break;
+			case 'K':
+				this->board[file][rank] = WKING;
+				file++;
+				break;
+			case 'p':
+				this->board[file][rank] = BPAWN;
+				file++;
+				break;
+			case 'n':
+				this->board[file][rank] = BKNIGHT;
+				file++;
+				break;
+			case 'b':
+				this->board[file][rank] = BBISHOP;
+				file++;
+				break;
+			case 'r':
+				this->board[file][rank] = BROOK;
+				file++;
+				break;
+			case 'q':
+				this->board[file][rank] = BQUEEN;
+				file++;
+				break;
+			case 'k':
+				this->board[file][rank] = BKING;
+				file++;
+				break;
+			case '/':
+				file = 0;
+				rank--;
+				break;
+			default:
+				uint8_t spaces = results[0][i] - '0';
+				if (file + spaces > 8) {
+					return false;
+				}
+				file += (int)spaces;
+				break;
+		}
+	}
+	if (results[1][0] == 'b') {
+		this->toPlay = BLACK;
+	} else {
+		this->toPlay = WHITE;
+	}
+	this->whiteKingSideCastle = false;
+	this->whiteQueenSideCastle = false;
+	this->blackKingSideCastle = false;
+	this->blackQueenSideCastle = false;
+	for (int i = 0; i < results[2].size(); i++) {
+		switch (results[2][i]) {
+			case '-':
+				break;
+			case 'K':
+				this->whiteKingSideCastle = true;
+				break;
+			case 'Q':
+				this->whiteQueenSideCastle = true;
+				break;
+			case 'k':
+				this->blackKingSideCastle = true;
+				break;
+			case 'q':
+				this->blackQueenSideCastle = true;
+			default:
+				return false;
+		}
+	}
+	if (results[3][0] != '-') {
+		this->enPassantFlag = results[3][0] - 'a';
+	}
+	std::istringstream(results[4]) >> this->pliesForDraw;
+	std::istringstream(results[5]) >> this->moveCount;
+	this->moveCount *= 2;
+	return true;
+}
+
 int main() {
 	srand(time(NULL));
 	Board board;
-	board.setStartingPosition();
-	for (int i = 0; i < 100; i++) {
-		if (!board.playRandom(Board::WHITE)) break;
-		board.print();
-		std::cout << std::endl << std::endl << std::endl << std::endl << std::endl << std::endl << std::endl << std::endl;
-		std::this_thread::sleep_for(std::chrono::milliseconds(10000));
-		if (!board.playRandom(Board::BLACK)) break;
-		board.print();
-		std::cout << std::endl << std::endl << std::endl << std::endl << std::endl << std::endl << std::endl << std::endl;
-		std::this_thread::sleep_for(std::chrono::milliseconds(10000));
-	}
+	std::string fen = "1n1qkbnr/2p1p1p1/1p3p2/1N3b1p/rp1pPP2/3P2K1/P1P3PP/R1BQ1BNR w - - 1 13";
+	board.loadFromFEN(fen);
+	board.print();
 	return 0;
 }
