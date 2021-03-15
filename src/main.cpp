@@ -46,16 +46,23 @@ class Board {
 		static constexpr uint8_t BROOK = 10;
 		static constexpr uint8_t BQUEEN = 11;
 		static constexpr uint8_t BKING = 12;
+		static constexpr uint8_t KINGSIDECASTLE = 13;
+		static constexpr uint8_t QUEENSIDECASTLE = 14;
 	private:
 		Coordinates whiteKingPosition;
 		Coordinates blackKingPosition;
 		uint8_t board[8][8];
 		int8_t enPassantFlag;
+		bool whiteKingSideCastle, whiteQueenSideCastle, blackKingSideCastle, blackQueenSideCastle;
 }; // class Board
 
 Board::Board() {
 	this->clearPosition();
 	this->enPassantFlag = -1;
+	this->whiteKingSideCastle = true;
+	this->whiteQueenSideCastle = true;
+	this->blackKingSideCastle = true;
+	this->blackQueenSideCastle = true;
 }
 
 void Board::setStartingPosition() {
@@ -307,6 +314,33 @@ std::vector<Coordinates> Board::getLegalMoves(Coordinates piece) {
 				i--;
 			}
 		}
+	} else if (currentStatus == WKING || currentStatus == BKING) {
+		if (side == WHITE ? this->whiteKingSideCastle : this->blackKingSideCastle) {
+			if (!this->isInCheck(side) && this->board[piece.file + 1][piece.rank] == EMPTY) {
+				this->board[piece.file + 1][piece.rank] = side == WHITE ? WKING : BKING;
+				if (!this->isInCheck(side) && this->board[piece.file + 2][piece.rank] == EMPTY) {
+					this->board[piece.file + 2][piece.rank] = side == WHITE ? WKING : BKING;
+					if (!this->isInCheck(side)) {
+						legalMoves.push_back({piece.file + 2, piece.rank, KINGSIDECASTLE});
+					}
+					this->board[piece.file + 2][piece.rank] = EMPTY;
+				}
+				this->board[piece.file + 1][piece.rank] = EMPTY;
+			}
+		}
+		if (side == WHITE ? this->whiteQueenSideCastle : this->blackQueenSideCastle) {
+			if (!this->isInCheck(side) && this->board[piece.file - 1][piece.rank] == EMPTY) {
+				this->board[piece.file - 1][piece.rank] = side == WHITE ? WKING : BKING;
+				if (!this->isInCheck(side) && this->board[piece.file - 2][piece.rank] == EMPTY) {
+					this->board[piece.file - 2][piece.rank] = side == WHITE ? WKING : BKING;
+					if (!this->isInCheck(side)) {
+						legalMoves.push_back({piece.file - 2, piece.rank, QUEENSIDECASTLE});
+					}
+					this->board[piece.file - 2][piece.rank] = EMPTY;
+				}
+				this->board[piece.file - 1][piece.rank] = EMPTY;
+			}
+		}
 	}
 	this->board[piece.file][piece.rank] = EMPTY;
 	for (int i = 0; i < legalMoves.size(); i++) {
@@ -377,12 +411,31 @@ void Board::play(Coordinates piece, Coordinates target) {
 	}
 	if (this->board[piece.file][piece.rank] == WKING) {
 		this->whiteKingPosition = target;
+		this->whiteKingSideCastle = false;
+		this->whiteQueenSideCastle = false;
 	} else if (this->board[piece.file][piece.rank] == BKING) {
 		this->blackKingPosition = target;
+		this->blackKingSideCastle = false;
+		this->blackQueenSideCastle = false;
+	} else if (this->board[piece.file][piece.rank] == WROOK) {
+		if (piece.file == 0) this->whiteQueenSideCastle = false;
+		else if (piece.file == 7) this->whiteKingSideCastle = false;
+	} else if (this->board[piece.file][piece.rank] == BROOK) {
+		if (piece.file == 0) this->blackQueenSideCastle = false;
+		else if (piece.file == 7) this->blackKingSideCastle = false;
 	}
-	this->board[target.file][target.rank] = this->board[piece.file][piece.rank];
-	if (target.promotion != 0) {
+	if (target.promotion == KINGSIDECASTLE) {
+		this->board[target.file][target.rank] = this->board[piece.file][piece.rank];
+		this->board[target.file - 1][target.rank] = this->board[7][target.rank];
+		this->board[7][target.rank] = EMPTY;
+	} else if (target.promotion == QUEENSIDECASTLE) {
+		this->board[target.file][target.rank] = this->board[piece.file][piece.rank];
+		this->board[target.file + 1][target.rank] = this->board[0][target.rank];
+		this->board[0][target.rank] = EMPTY;
+	} else if (target.promotion != 0) {
 		this->board[target.file][target.rank] = target.promotion;
+	} else {
+		this->board[target.file][target.rank] = this->board[piece.file][piece.rank];
 	}
 	this->board[piece.file][piece.rank] = EMPTY;
 	this->enPassantFlag = -1;
