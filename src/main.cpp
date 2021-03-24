@@ -34,6 +34,7 @@ class Board {
 		void clearPosition();
 		void setPiece(Coordinates coords, uint8_t piece);
 		bool loadFromFEN(std::string fen);
+		std::string exportFEN();
 
 		static constexpr bool WHITE = false;
 		static constexpr bool BLACK = true;
@@ -130,74 +131,74 @@ std::vector<Coordinates> Board::getAttacks(Coordinates piece) {
 			break;
 		case WBISHOP:
 		case BBISHOP:
-			for (int i = 1; i < std::min(piece.file, piece.rank); i++) {
+			for (int i = 1; i <= std::min(piece.file, piece.rank); i++) {
 				attacking.push_back({piece.file - i, piece.rank - i});
 				if (this->board[piece.file - i][piece.rank - i] != EMPTY) break;
 			}
-			for (int i = 1; i < std::min(uint8_t(7 - piece.file), piece.rank); i++) {
+			for (int i = 1; i <= std::min(uint8_t(7 - piece.file), piece.rank); i++) {
 				attacking.push_back({piece.file + i, piece.rank - i});
 				if (this->board[piece.file + i][piece.rank - i] != EMPTY) break;
 			}
-			for (int i = 1; i < std::min(piece.file, uint8_t(7 - piece.rank)); i++) {
+			for (int i = 1; i <= std::min(piece.file, uint8_t(7 - piece.rank)); i++) {
 				attacking.push_back({piece.file - i, piece.rank + i});
 				if (this->board[piece.file - i][piece.rank + i] != EMPTY) break;
 			}
-			for (int i = 1; i < std::min(uint8_t(7 - piece.file), uint8_t(7 - piece.rank)); i++) {
+			for (int i = 1; i <= std::min(uint8_t(7 - piece.file), uint8_t(7 - piece.rank)); i++) {
 				attacking.push_back({piece.file + i, piece.rank + i});
 				if (this->board[piece.file + i][piece.rank + i] != EMPTY) break;
 			}
 			break;
 		case WROOK:
 		case BROOK:
-			for (int i = 1; i < piece.file; i++) {
+			for (int i = 1; i <= piece.file; i++) {
 				attacking.push_back({piece.file - i, piece.rank});
 				if (this->board[piece.file - i][piece.rank] != EMPTY) break;
 			}
-			for (int i = 1; i < 7 - piece.file; i++) {
+			for (int i = 1; i <= 7 - piece.file; i++) {
 				attacking.push_back({piece.file + i, piece.rank});
 				if (this->board[piece.file + i][piece.rank] != EMPTY) break;
 			}
-			for (int i = 1; i < piece.rank; i++) {
+			for (int i = 1; i <= piece.rank; i++) {
 				attacking.push_back({piece.file, piece.rank - i});
 				if (this->board[piece.file][piece.rank - i] != EMPTY) break;
 			}
-			for (int i = 1; i < 7 - piece.rank; i++) {
+			for (int i = 1; i <= 7 - piece.rank; i++) {
 				attacking.push_back({piece.file, piece.rank + i});
 				if (this->board[piece.file][piece.rank + i] != EMPTY) break;
 			}
 			break;
 		case WQUEEN:
 		case BQUEEN:
-			for (int i = 1; i < std::min(piece.file, piece.rank); i++) {
+			for (int i = 1; i <= std::min(piece.file, piece.rank); i++) {
 				attacking.push_back({piece.file - i, piece.rank - i});
 				if (this->board[piece.file - i][piece.rank - i] != EMPTY) break;
 			}
-			for (int i = 1; i < std::min(uint8_t(7 - piece.file), piece.rank); i++) {
+			for (int i = 1; i <= std::min(uint8_t(7 - piece.file), piece.rank); i++) {
 				attacking.push_back({piece.file + i, piece.rank - i});
 				if (this->board[piece.file + i][piece.rank - i] != EMPTY) break;
 			}
-			for (int i = 1; i < std::min(piece.file, uint8_t(7 - piece.rank)); i++) {
+			for (int i = 1; i <= std::min(piece.file, uint8_t(7 - piece.rank)); i++) {
 				attacking.push_back({piece.file - i, piece.rank + i});
 				if (this->board[piece.file - i][piece.rank + i] != EMPTY) break;
 			}
-			for (int i = 1; i < std::min(uint8_t(7 - piece.file), uint8_t(7 - piece.rank)); i++) {
+			for (int i = 1; i <= std::min(uint8_t(7 - piece.file), uint8_t(7 - piece.rank)); i++) {
 				attacking.push_back({piece.file + i, piece.rank + i});
 				if (this->board[piece.file + i][piece.rank + i] != EMPTY) break;
 			}
 
-			for (int i = 1; i < piece.file; i++) {
+			for (int i = 1; i <= piece.file; i++) {
 				attacking.push_back({piece.file - i, piece.rank});
 				if (this->board[piece.file - i][piece.rank] != EMPTY) break;
 			}
-			for (int i = 1; i < 7 - piece.file; i++) {
+			for (int i = 1; i <= 7 - piece.file; i++) {
 				attacking.push_back({piece.file + i, piece.rank});
 				if (this->board[piece.file + i][piece.rank] != EMPTY) break;
 			}
-			for (int i = 1; i < piece.rank; i++) {
+			for (int i = 1; i <= piece.rank; i++) {
 				attacking.push_back({piece.file, piece.rank - i});
 				if (this->board[piece.file][piece.rank - i] != EMPTY) break;
 			}
-			for (int i = 1; i < 7 - piece.rank; i++) {
+			for (int i = 1; i <= 7 - piece.rank; i++) {
 				attacking.push_back({piece.file, piece.rank + i});
 				if (this->board[piece.file][piece.rank + i] != EMPTY) break;
 			}
@@ -439,20 +440,22 @@ void Board::play(Coordinates piece, Coordinates target) {
 		this->board[target.file][target.rank] = this->board[piece.file][piece.rank];
 		this->board[target.file - 1][target.rank] = this->board[7][target.rank];
 		this->board[7][target.rank] = EMPTY;
+		this->pliesForDraw++;
 	} else if (target.promotion == QUEENSIDECASTLE) {
 		this->board[target.file][target.rank] = this->board[piece.file][piece.rank];
 		this->board[target.file + 1][target.rank] = this->board[0][target.rank];
 		this->board[0][target.rank] = EMPTY;
+		this->pliesForDraw++;
 	} else if (target.promotion != 0) {
 		this->board[target.file][target.rank] = target.promotion;
-	} else {
-		this->board[target.file][target.rank] = this->board[piece.file][piece.rank];
-	}
-	
-	if (this->board[piece.file][piece.rank] != WPAWN && this->board[piece.file][piece.rank != BPAWN && !isEnPassant && this->board[target.file][target.rank] == EMPTY]) {
-		this->pliesForDraw++;
-	} else {
 		this->pliesForDraw = 0;
+	} else {
+		if (this->board[piece.file][piece.rank] == WPAWN || this->board[piece.file][piece.rank] == BPAWN || this->board[target.file][target.rank] != EMPTY) {
+			this->pliesForDraw = 0;
+		} else {
+			this->pliesForDraw++;
+		}
+		this->board[target.file][target.rank] = this->board[piece.file][piece.rank];
 	}
 
 	this->board[piece.file][piece.rank] = EMPTY;
@@ -463,6 +466,7 @@ void Board::play(Coordinates piece, Coordinates target) {
 		}
 	}
 	this->moveCount++;
+	this->toPlay = !this->toPlay;
 }
 
 bool Board::playRandom(bool side) {
@@ -487,7 +491,7 @@ bool Board::playRandom(bool side) {
 		}
 	}
 	if (this->pliesForDraw == 150) {
-		std::cout << "50 moves since last pawn move or capture. Draw." << std::endl;
+		std::cout << "75 moves since last pawn move or capture. Draw." << std::endl;
 		return false;
 	}
 	int move = rand() % allMoves.size();
@@ -504,13 +508,16 @@ void Board::clearPosition() {
 }
 
 void Board::print() {
-	char pieces[] = " PNBRQKpnbrqk";
+	const char pieces[] = " PNBRQKpnbrqk";
+	std::cout << "Turn " << (this->moveCount / 2) + 1 << " (" << (this->toPlay == WHITE ? "white" : "black") << " to move); " << (int)this->pliesForDraw << " plies since last capture or pawn move." << std::endl;
+	std::cout << "a b c d e f g h" << std::endl << std::endl;
 	for (int i = 7; i >= 0; i--) {
 		for (int j = 0; j < 8; j++) {
 			std::cout << pieces[this->board[j][i]] << " ";
 		}
-		std::cout << std::endl;
+		std::cout << " " << i + 1 << std::endl;
 	}
+	std::cout << "------------------" << std::endl;
 }
 
 void Board::setPiece(Coordinates coords, uint8_t piece) {
@@ -547,6 +554,7 @@ bool Board::loadFromFEN(std::string fen) {
 				break;
 			case 'K':
 				this->board[file][rank] = WKING;
+				this->whiteKingPosition = {file, rank};
 				file++;
 				break;
 			case 'p':
@@ -571,6 +579,7 @@ bool Board::loadFromFEN(std::string fen) {
 				break;
 			case 'k':
 				this->board[file][rank] = BKING;
+				this->blackKingPosition = {file, rank};
 				file++;
 				break;
 			case '/':
@@ -623,11 +632,58 @@ bool Board::loadFromFEN(std::string fen) {
 	return true;
 }
 
+std::string Board::exportFEN() {
+	std::string fen = "";
+	const char pieces[] = " PNBRQKpnbrqk";
+	for (int i = 7; i >= 0; i--) {
+		int emptySquareCount = 0;
+		for (int j = 0; j < 8; j++) {
+			if (this->board[j][i] == EMPTY) {
+				emptySquareCount++;
+			} else {
+				if (emptySquareCount > 0) {
+					fen += std::to_string(emptySquareCount);
+					emptySquareCount = 0;
+				}
+				fen += pieces[this->board[j][i]];
+			}
+		}
+		if (emptySquareCount > 0) {
+			fen += std::to_string(emptySquareCount);
+		}
+		fen += '/';
+	}
+	fen.pop_back();
+	fen += (this->toPlay == WHITE ? " w " : " b ");
+	if (this->whiteKingSideCastle) fen += 'K';
+	if (this->whiteQueenSideCastle) fen += 'Q';
+	if (this->blackKingSideCastle) fen += 'k';
+	if (this->blackQueenSideCastle) fen += 'q';
+	if (fen.back() == ' ') fen += '-';
+	
+	fen += ' ';
+	if (this->enPassantFlag != -1) {
+		fen += (this->enPassantFlag + 'a');
+		fen += (this->toPlay == WHITE ? "6 " : "3 ");
+	} else {
+		fen += "- ";
+	}
+	fen += std::to_string((int)pliesForDraw);
+	fen += ' ';
+	fen += std::to_string(moveCount / 2 + 1);
+	return fen;
+}
+
 int main() {
 	srand(time(NULL));
 	Board board;
-	std::string fen = "1n1qkbnr/2p1p1p1/1p3p2/1N3b1p/rp1pPP2/3P2K1/P1P3PP/R1BQ1BNR w - - 1 13";
-	board.loadFromFEN(fen);
+	board.setStartingPosition();
+	bool toPlay = Board::WHITE;
+	while (true) {
+		if (!board.playRandom(toPlay)) break;
+		toPlay = !toPlay;
+	}
 	board.print();
+	std::cout << board.exportFEN() << std::endl;
 	return 0;
 }
