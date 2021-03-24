@@ -5,6 +5,18 @@
 #include <string>
 #include <sstream>
 #include <iterator>
+#include <fstream>
+
+//  So I'm just writing everything wrong with this code here
+// 1. The semantics are horrible
+// 2. During checkmate/stalemate, Board::toPlay seems to be wrong.
+// 3. Make sure the 75 (or 50) move rule checks for checkmates, stalemates, captures or pawn moves at the last move
+// 4. Threefold repetition isn't implemented
+// 5. Draw by insufficient material isn't implemented
+// 6. Board::play assumes the move is legal, which may or may not be a good thing
+// 7. The semantics are horrible
+// 8. The semantics are horrible
+// 9. The semantics are horrible
 
 struct Coordinates {
 	uint8_t file, rank;
@@ -21,7 +33,7 @@ struct Coordinates {
 
 class Board {
 	public:
-		Board();
+		Board(bool recordMoves = false);
 		void setStartingPosition();
 		std::vector<Coordinates> getAttacks(Coordinates piece);
 		bool attacks(Coordinates piece, Coordinates target);
@@ -35,6 +47,7 @@ class Board {
 		void setPiece(Coordinates coords, uint8_t piece);
 		bool loadFromFEN(std::string fen);
 		std::string exportFEN();
+		void exportPGN(std::string outputFile);
 
 		static constexpr bool WHITE = false;
 		static constexpr bool BLACK = true;
@@ -54,6 +67,7 @@ class Board {
 		static constexpr uint8_t BKING = 12;
 		static constexpr uint8_t KINGSIDECASTLE = 13;
 		static constexpr uint8_t QUEENSIDECASTLE = 14;
+		static constexpr char *pieces = " PNBRQKpnbrqk";
 	private:
 		Coordinates whiteKingPosition;
 		Coordinates blackKingPosition;
@@ -63,9 +77,11 @@ class Board {
 		int moveCount;
 		uint8_t pliesForDraw;
 		bool toPlay;
+		bool recordEnable;
+		std::string pgn;
 }; // class Board
 
-Board::Board() {
+Board::Board(bool recordMoves) {
 	this->clearPosition();
 	this->enPassantFlag = -1;
 	this->whiteKingSideCastle = true;
@@ -75,6 +91,8 @@ Board::Board() {
 	this->moveCount = 0;
 	this->pliesForDraw = 0;
 	this->toPlay = WHITE;
+	this->recordEnable = recordMoves;
+	if (recordMoves) this->pgn = "[Event \"Casual Game\"]\n[Site \"Earth\"]\n[Date \"????.??.??\"]\n[Round \"1\"]\n[White \"Bax's Horrible Engine\"]\n[Black \"Bax's Horrible Engine\"]\n[Result \"*\"]\n";
 }
 
 void Board::setStartingPosition() {
@@ -411,8 +429,12 @@ bool Board::getSide(Coordinates coords) {
 }
 
 void Board::play(Coordinates piece, Coordinates target) {
+	if (this->recordEnable && this->moveCount % 2 == 0) {
+		this->pgn += std::to_string(this->moveCount / 2 + 1);
+		this->pgn += ". ";
+	}
 	bool isEnPassant = false;
-	if (target.file == enPassantFlag) {
+	if (target.file == this->enPassantFlag) {
 		if (this->getSide(piece) == WHITE && target.rank == 5) {
 			this->board[target.file][target.rank - 1] = EMPTY;
 			isEnPassant = true;
@@ -441,15 +463,42 @@ void Board::play(Coordinates piece, Coordinates target) {
 		this->board[target.file - 1][target.rank] = this->board[7][target.rank];
 		this->board[7][target.rank] = EMPTY;
 		this->pliesForDraw++;
+		this->pgn += "O-O ";
 	} else if (target.promotion == QUEENSIDECASTLE) {
 		this->board[target.file][target.rank] = this->board[piece.file][piece.rank];
 		this->board[target.file + 1][target.rank] = this->board[0][target.rank];
 		this->board[0][target.rank] = EMPTY;
 		this->pliesForDraw++;
+		this->pgn += "O-O-O ";
 	} else if (target.promotion != 0) {
+		if (this->recordEnable) {
+			this->pgn += (char)(piece.file + 'a');
+			if (piece.file != target.file) {
+				this->pgn += 'x';
+				this->pgn += (char)(target.file + 'a');
+			}
+			this->pgn += std::to_string(target.rank + 1);
+			this->pgn += '=';
+			this->pgn += this->pieces[target.promotion % 6];
+		}
 		this->board[target.file][target.rank] = target.promotion;
 		this->pliesForDraw = 0;
 	} else {
+		if (this->recordEnable) {
+			if (this->board[piece.file][piece.rank] == WPAWN || this->board[piece.file][piece.rank] == BPAWN) {
+				this->pgn += (char)(piece.file + 'a');
+				if (piece.file != target.file) {
+					this->pgn += 'x';
+					this->pgn += (char)(target.file + 'a');
+				}
+			} else {
+				this->pgn += this->pieces[this->board[piece.file][piece.rank] % 6];
+				if (this->board[target.file][target.rank] != EMPTY) this->pgn += 'x';
+				this->pgn += (char)(target.file + 'a');
+				// check if any other piece with the same name attacks the same square
+			}
+			this->pgn += std::to_string(target.rank + 1);
+		}
 		if (this->board[piece.file][piece.rank] == WPAWN || this->board[piece.file][piece.rank] == BPAWN || this->board[target.file][target.rank] != EMPTY) {
 			this->pliesForDraw = 0;
 		} else {
@@ -457,6 +506,7 @@ void Board::play(Coordinates piece, Coordinates target) {
 		}
 		this->board[target.file][target.rank] = this->board[piece.file][piece.rank];
 	}
+	if (this->recordEnable) this->pgn += ' ';
 
 	this->board[piece.file][piece.rank] = EMPTY;
 	this->enPassantFlag = -1;
@@ -508,12 +558,11 @@ void Board::clearPosition() {
 }
 
 void Board::print() {
-	const char pieces[] = " PNBRQKpnbrqk";
 	std::cout << "Turn " << (this->moveCount / 2) + 1 << " (" << (this->toPlay == WHITE ? "white" : "black") << " to move); " << (int)this->pliesForDraw << " plies since last capture or pawn move." << std::endl;
 	std::cout << "a b c d e f g h" << std::endl << std::endl;
 	for (int i = 7; i >= 0; i--) {
 		for (int j = 0; j < 8; j++) {
-			std::cout << pieces[this->board[j][i]] << " ";
+			std::cout << this->pieces[this->board[j][i]] << " ";
 		}
 		std::cout << " " << i + 1 << std::endl;
 	}
@@ -634,7 +683,6 @@ bool Board::loadFromFEN(std::string fen) {
 
 std::string Board::exportFEN() {
 	std::string fen = "";
-	const char pieces[] = " PNBRQKpnbrqk";
 	for (int i = 7; i >= 0; i--) {
 		int emptySquareCount = 0;
 		for (int j = 0; j < 8; j++) {
@@ -645,7 +693,7 @@ std::string Board::exportFEN() {
 					fen += std::to_string(emptySquareCount);
 					emptySquareCount = 0;
 				}
-				fen += pieces[this->board[j][i]];
+				fen += this->pieces[this->board[j][i]];
 			}
 		}
 		if (emptySquareCount > 0) {
@@ -674,9 +722,16 @@ std::string Board::exportFEN() {
 	return fen;
 }
 
+void Board::exportPGN(std::string outputFile) {
+	if (!this->recordEnable) return;
+	std::ofstream out(outputFile + ".pgn");
+	out << this->pgn << std::endl;
+	out.close();
+}
+
 int main() {
 	srand(time(NULL));
-	Board board;
+	Board board(true);
 	board.setStartingPosition();
 	bool toPlay = Board::WHITE;
 	while (true) {
@@ -684,6 +739,7 @@ int main() {
 		toPlay = !toPlay;
 	}
 	board.print();
+	board.exportPGN("game");
 	std::cout << board.exportFEN() << std::endl;
 	return 0;
 }
